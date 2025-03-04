@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabungan</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #fce4ec; /* Pink muda */
+            color: #333;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #e3f2fd; /* Biru muda */
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: none; /* Awalnya disembunyikan */
+        }
+        input, button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+        }
+        input {
+            background-color: #f8f8f8;
+        }
+        button {
+            background-color: #81c784; /* Hijau muda */
+            color: white;
+            cursor: pointer;
+        }
+        .list-tabungan {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .tabungan-item {
+            background-color: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .actions button {
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50%;
+        }
+        .add-tabungan {
+            position: fixed;
+            top: 20px; /* Selalu di atas */
+            right: 20px;
+            background-color: #ff7043; /* Merah muda */
+            color: white;
+            font-size: 24px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            z-index: 1000; /* Pastikan di atas elemen lain */
+        }
+        .popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <button class="add-tabungan" onclick="toggleForm()">+</button>
+
+    <div class="container" id="form-container">
+        <h2>Tambah Tabungan</h2>
+        <input type="text" id="nama" placeholder="Masukkan nama">
+        <input type="file" id="foto" accept="image/*">
+        <input type="number" id="jumlah" placeholder="Target tabungan">
+        <button onclick="tambahTabungan()">Simpan</button>
+    </div>
+
+    <div class="list-tabungan" id="list-tabungan"></div>
+
+    <div class="popup" id="popup">
+        <p>Selamat! Anda telah mencapai target tabungan!</p>
+    </div>
+
+    <script>
+        let tabungan = JSON.parse(localStorage.getItem("tabungan")) || [];
+
+        function toggleForm() {
+            let form = document.getElementById("form-container");
+            form.style.display = (form.style.display === "none" || form.style.display === "") ? "block" : "none";
+        }
+
+        function tambahTabungan() {
+            let nama = document.getElementById("nama").value;
+            let jumlah = document.getElementById("jumlah").value;
+            let fotoInput = document.getElementById("foto");
+            let foto = "";
+
+            if (fotoInput.files.length > 0) {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    foto = e.target.result;
+                    simpanTabungan(nama, jumlah, foto);
+                };
+                reader.readAsDataURL(fotoInput.files[0]);
+            } else {
+                simpanTabungan(nama, jumlah, foto);
+            }
+        }
+
+        function simpanTabungan(nama, jumlah, foto) {
+            if (nama && jumlah) {
+                let data = { nama, target: parseInt(jumlah), total: 0, foto };
+                tabungan.push(data);
+                localStorage.setItem("tabungan", JSON.stringify(tabungan));
+                tampilkanTabungan();
+                document.getElementById("form-container").style.display = "none"; // Sembunyikan form setelah tambah
+            }
+        }
+
+        function tampilkanTabungan() {
+            let list = document.getElementById("list-tabungan");
+            list.innerHTML = "";
+            tabungan.forEach((item, index) => {
+                let selesai = item.total >= item.target ? "✅" : "";
+                list.innerHTML += `
+                    <div class="tabungan-item">
+                        <div>
+                            ${item.foto ? `<img src="${item.foto}" width="50" height="50" style="border-radius:50%;">` : ""}
+                            <strong>${item.nama}</strong> ${selesai}<br>
+                            Target: Rp ${item.target}<br>
+                            Sudah Ditabung: Rp ${item.total}
+                        </div>
+                        <div class="actions">
+                            <button onclick="ubahTabungan(${index}, 1)">+</button>
+                            <button onclick="ubahTabungan(${index}, -1)">-</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function ubahTabungan(index, perubahan) {
+            let jumlahBaru = parseInt(prompt("Masukkan jumlah:"));
+            if (!isNaN(jumlahBaru) && jumlahBaru > 0) {
+                tabungan[index].total += perubahan * jumlahBaru;
+                if (tabungan[index].total < 0) tabungan[index].total = 0; // Biar gak minus
+                if (tabungan[index].total >= tabungan[index].target) {
+                    tampilkanPopup();
+                }
+                localStorage.setItem("tabungan", JSON.stringify(tabungan));
+                tampilkanTabungan();
+            }
+        }
+
+        function tampilkanPopup() {
+            let popup = document.getElementById("popup");
+            popup.style.display = "block";
+            setTimeout(() => {
+                popup.style.display = "none";
+            }, 3000);
+        }
+
+        tampilkanTabungan();
+    </script>
+</body>
+</html>
